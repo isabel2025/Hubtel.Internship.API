@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Net;
 using Hubtel.Internship.Api.Interfaces;
 using Hubtel.Internship.Api.Models;
+using Hubtel.ProducerMessaging.Api.Models;
 using Newtonsoft.Json;
 
 namespace Hubtel.Internship.Api.Services
@@ -17,12 +19,12 @@ namespace Hubtel.Internship.Api.Services
             _dbContext = dbContext;
         }
 
-        public Task<TaskModel> GetTasks(string userId)
+        public Task<ApiResponse<List<TaskModel>>> GetTasks(string userId)
         {
             throw new NotImplementedException();
         }
          
-        public async Task<TaskModel> AddTask(TaskModel model)
+        public async Task<ApiResponse<TaskModel>> AddTask(TaskModel model)
         { 
             try
             {
@@ -42,16 +44,35 @@ namespace Hubtel.Internship.Api.Services
 
                 if (saveResponse.IsKeySet)
                 {
-                    _logger.LogDebug("Task has been created succesfully. UserId: {userid}", model.UserId);
-                    return model;
+                    _logger.LogDebug("Task has been created successfully. UserId: {userid}", model.UserId);
+                    
+                    return new ApiResponse<TaskModel>
+                    {
+                        Status = "true",
+                        Code = $"{(int)HttpStatusCode.OK}",
+                        Message = "Successfully added Task",
+                        Data = model
+                    };
                 }
-
-                return null;
+                return new ApiResponse<TaskModel>
+                {
+                    Status = "false",
+                    Code = $"{(int)HttpStatusCode.BadRequest}",
+                    Message = "failed to added Task",
+                    Data = new TaskModel()
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError("Exception occured creating a task. Error: {error}", ex.ToString());
-                return null;
+                
+                return new ApiResponse<TaskModel>
+                {
+                    Status = "false",
+                    Code = $"{(int)HttpStatusCode.InternalServerError}",
+                    Message = "Oops something bad happened",
+                    Data = new TaskModel()
+                };
             }
 
         }
