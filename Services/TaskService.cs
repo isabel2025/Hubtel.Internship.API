@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Data;
 using System.Net;
 using Hubtel.Internship.Api.Interfaces;
 using Hubtel.Internship.Api.Models;
-using Hubtel.ProducerMessaging.Api.Models;
 using Newtonsoft.Json;
+using Npgsql;
 
 namespace Hubtel.Internship.Api.Services
 {
@@ -11,13 +12,19 @@ namespace Hubtel.Internship.Api.Services
 	{
         private readonly ILogger<TaskService> _logger;
         private readonly ApplicationDbContext _dbContext;
+        private readonly string _connectionString;
 
 
-        public TaskService(ILogger<TaskService> logger, ApplicationDbContext dbContext)
+        public TaskService(ILogger<TaskService> logger, IConfiguration configuration, ApplicationDbContext dbContext)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _connectionString = configuration["ConnectionStrings:DbConnection"];
+            // DbContextOptionsBuilder<ApplicationDbContext> builder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            // builder.UseMySQL(_connectionString);
         }
+
+        internal IDbConnection Connection => new NpgsqlConnection(_connectionString);
 
         public Task<ApiResponse<List<TaskModel>>> GetTasks(string userId)
         {
@@ -36,24 +43,29 @@ namespace Hubtel.Internship.Api.Services
                     Description = model.Description,
                     UserId = model.UserId,
                     Status = "active",
+                    CreatedAt = DateTime.UtcNow
+                    
 
                 };
-               var saveResponse = await _dbContext.Tasks.AddAsync(modelToDb);
+                
+               
+                   await _dbContext.Tasks.AddAsync(modelToDb);
 
-               await _dbContext.SaveChangesAsync();
+               var saveResponse=  await _dbContext.SaveChangesAsync();
 
-                if (saveResponse.IsKeySet)
+                if (saveResponse > 0)
                 {
                     _logger.LogDebug("Task has been created successfully. UserId: {userid}", model.UserId);
                     
                     return new ApiResponse<TaskModel>
                     {
                         Status = "true",
-                        Code = $"{(int)HttpStatusCode.OK}",
+                        Code = $"{(int)HttpStatusCode.Created}",
                         Message = "Successfully added Task",
                         Data = model
                     };
                 }
+                
                 return new ApiResponse<TaskModel>
                 {
                     Status = "false",
@@ -62,7 +74,7 @@ namespace Hubtel.Internship.Api.Services
                     Data = new TaskModel()
                 };
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
                 _logger.LogError("Exception occured creating a task. Error: {error}", ex.ToString());
                 

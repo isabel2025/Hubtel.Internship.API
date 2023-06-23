@@ -1,5 +1,4 @@
 ﻿using Hubtel.Internship.Api.Models;
-using Hubtel.ProducerMessaging.Api.Models;
 
 namespace Hubtel.Internship.Api.Interfaces
 {

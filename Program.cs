@@ -1,4 +1,4 @@
-﻿using Arch.EntityFrameworkCore.UnitOfWork;
+﻿//using Arch.EntityFrameworkCore.UnitOfWork;
 using Hubtel.Internship.Api.Interfaces;
 using Hubtel.Internship.Api.Models;
 using Hubtel.Internship.Api.Services;
@@ -12,10 +12,14 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DataSource"));
-}, ServiceLifetime.Transient).AddUnitOfWork<ApplicationDbContext>();
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
+}, ServiceLifetime.Transient);
+
+// builder.Services.AddDbContext<ApplicationDbContext>(options => options
+//     .UseNpgsql(builder.Configuration["ConnectionStrings:DbConnection"]));
 
 builder.Services.AddScoped<ITaskService, TaskService>();
 

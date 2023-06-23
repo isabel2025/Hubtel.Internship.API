@@ -1,4 +1,4 @@
-namespace Hubtel.ProducerMessaging.Api.Models
+namespace Hubtel.Internship.Api.Models
 {
     public class ApiResponse<T>
     {
