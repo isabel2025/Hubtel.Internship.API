@@ -1,93 +1,111 @@
-﻿using System;
-using System.Data;
 using System.Net;
 using Hubtel.Internship.Api.Interfaces;
 using Hubtel.Internship.Api.Models;
-using Newtonsoft.Json;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
-namespace Hubtel.Internship.Api.Services
+namespace Hubtel.Internship.Api.Services;
+
+public class TaskService : ITaskService
 {
-	public class TaskService : ITaskService
-	{
-        private readonly ILogger<TaskService> _logger;
-        private readonly ApplicationDbContext _dbContext;
-        private readonly string _connectionString;
+    private readonly ILogger<TaskService> _logger;
+    private readonly ApplicationDbContext _dbContext;
 
+    public TaskService(
+        ILogger<TaskService> logger,
+        ApplicationDbContext dbContext)
+    {
+        _logger = logger;
+        _dbContext = dbContext;
+    }
 
-        public TaskService(ILogger<TaskService> logger, IConfiguration configuration, ApplicationDbContext dbContext)
+    public async Task<ApiResponse<List<TaskModel>>> GetTasks(string userId)
+    {
+        try
         {
-            _logger = logger;
-            _dbContext = dbContext;
-            _connectionString = configuration["ConnectionStrings:DbConnection"];
-            // DbContextOptionsBuilder<ApplicationDbContext> builder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            // builder.UseMySQL(_connectionString);
-        }
+            var tasks = await _dbContext.Tasks
+                .Where(task => task.UserId == userId)
+                .OrderByDescending(task => task.CreatedAt)
+                .Select(task => new TaskModel
+                {
+                    Title = task.Title,
+                    Description = task.Description,
+                    Status = task.Status,
+                    UserId = task.UserId,
+                    CreatedAt = task.CreatedAt
+                })
+                .ToListAsync();
 
-        internal IDbConnection Connection => new NpgsqlConnection(_connectionString);
-
-        public Task<ApiResponse<List<TaskModel>>> GetTasks(string userId)
-        {
-            throw new NotImplementedException();
-        }
-         
-        public async Task<ApiResponse<TaskModel>> AddTask(TaskModel model)
-        { 
-            try
+            return new ApiResponse<List<TaskModel>>
             {
-                _logger.LogDebug("About to add a task. Payload: {payload}", JsonConvert.SerializeObject(model));
+                Status = "true",
+                Code = $"{(int)HttpStatusCode.OK}",
+                Message = "Tasks retrieved successfully",
+                Data = tasks
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tasks for user {UserId}", userId);
 
-                var modelToDb = new Tasks
-                {
-                    Title = model.Title,
-                    Description = model.Description,
-                    UserId = model.UserId,
-                    Status = "active",
-                    CreatedAt = DateTime.UtcNow
-                    
+            return new ApiResponse<List<TaskModel>>
+            {
+                Status = "false",
+                Code = $"{(int)HttpStatusCode.InternalServerError}",
+                Message = "Unable to retrieve tasks",
+                Data = new List<TaskModel>()
+            };
+        }
+    }
 
-                };
-                
-               
-                   await _dbContext.Tasks.AddAsync(modelToDb);
+    public async Task<ApiResponse<TaskModel>> AddTask(TaskModel model)
+    {
+        try
+        {
+            var task = new Tasks
+            {
+                Title = model.Title,
+                Description = model.Description,
+                UserId = model.UserId,
+                Status = string.IsNullOrWhiteSpace(model.Status) ? "active" : model.Status,
+                CreatedAt = DateTime.UtcNow
+            };
 
-               var saveResponse=  await _dbContext.SaveChangesAsync();
+            await _dbContext.Tasks.AddAsync(task);
+            var saved = await _dbContext.SaveChangesAsync();
 
-                if (saveResponse > 0)
-                {
-                    _logger.LogDebug("Task has been created successfully. UserId: {userid}", model.UserId);
-                    
-                    return new ApiResponse<TaskModel>
-                    {
-                        Status = "true",
-                        Code = $"{(int)HttpStatusCode.Created}",
-                        Message = "Successfully added Task",
-                        Data = model
-                    };
-                }
-                
+            if (saved > 0)
+            {
+                model.Status = task.Status;
+                model.CreatedAt = task.CreatedAt;
+
                 return new ApiResponse<TaskModel>
                 {
-                    Status = "false",
-                    Code = $"{(int)HttpStatusCode.BadRequest}",
-                    Message = "failed to added Task",
-                    Data = new TaskModel()
-                };
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError("Exception occured creating a task. Error: {error}", ex.ToString());
-                
-                return new ApiResponse<TaskModel>
-                {
-                    Status = "false",
-                    Code = $"{(int)HttpStatusCode.InternalServerError}",
-                    Message = "Oops something bad happened",
-                    Data = new TaskModel()
+                    Status = "true",
+                    Code = $"{(int)HttpStatusCode.Created}",
+                    Message = "Task added successfully",
+                    Data = model
                 };
             }
 
+            return new ApiResponse<TaskModel>
+            {
+                Status = "false",
+                Code = $"{(int)HttpStatusCode.BadRequest}",
+                Message = "Task could not be added",
+                Data = new TaskModel()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating task for user {UserId}", model.UserId);
+
+            return new ApiResponse<TaskModel>
+            {
+                Status = "false",
+                Code = $"{(int)HttpStatusCode.InternalServerError}",
+                Message = "Unable to create task",
+                Data = new TaskModel()
+            };
         }
     }
 }
-
