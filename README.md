@@ -42,11 +42,13 @@ Example request:
 
 ## Running locally
 
-Update the PostgreSQL connection string in `appsettings.json` with your local database password, then run:
+1. Make sure PostgreSQL is running.
+2. Update the connection string in `appsettings.json` with your local PostgreSQL details.
+3. Run:
 
 ```bash
 dotnet restore
 dotnet run
 ```
 
-Swagger is available when the project is running in development mode.
+The app creates the required table on first run. Swagger is available when the project is running in development mode.
