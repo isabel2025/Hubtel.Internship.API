@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/Hubtel.Internship.Api.props" />
-</Project>

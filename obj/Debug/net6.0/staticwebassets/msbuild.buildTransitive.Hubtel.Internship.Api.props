@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../buildMultiTargeting/Hubtel.Internship.Api.props" />
-</Project>
